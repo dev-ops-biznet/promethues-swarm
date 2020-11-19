@@ -1,6 +1,6 @@
 version: "3.3"
 networks:
-  net:
+  monitoring:
     driver: overlay
     attachable: true
 
@@ -10,8 +10,8 @@ volumes:
 configs:
    dockerd_config:
     file: ./dockerd-exporter/Caddyfile
-   prom_conf:
-    file: ./prometheus/conf/prometheus.yml
+   #prom_conf:
+   #file: ./prometheus/conf/prometheus.yml
    node_exporter_entrypoint:
     file: ./node-exporter/docker-entrypoint.sh
 
@@ -19,7 +19,9 @@ services:
   cadvisor:
     image: google/cadvisor
     networks:
-      - net
+      - monitoring
+    ports:
+      - "8080:8080"
     command: -logtostderr -docker_only
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -31,6 +33,7 @@ services:
       mode: global
       resources:
         limits:
+          cpus: "0.5"
           memory: 128M
         reservations:
           memory: 64M
@@ -38,7 +41,9 @@ services:
   node-exporter:
     image: prom/node-exporter:latest
     networks:
-      - net
+      - monitoring
+    ports:
+      - "9100:9100"
     volumes:
       - /sys:/host/sys:ro
       - /:/rootfs:ro
@@ -49,6 +54,12 @@ services:
         target: /docker-entrypoint.sh
     deploy:
       mode: global
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+        reservations:
+          memory: 64M
     environment:
       - NODE_ID={{.Node.ID}}
     command:
@@ -62,13 +73,13 @@ services:
     entrypoint:
        - /bin/sh
        - /docker-entrypoint.sh
-
+    
   dockerd-exporter:
     image: stefanprodan/caddy
     networks:
-      - net
+      - monitoring
     environment:
-      - DOCKER_GWBRIDGE_IP=172.18.0.1
+      - DOCKER_GWBRIDGE_IP=172.19.0.1,172.18.0.1
     configs:
       - source: dockerd_config
         target: /etc/caddy/Caddyfile
@@ -76,33 +87,34 @@ services:
       mode: global
       resources:
         limits:
+          cpus: "0.5"
           memory: 128M
         reservations:
           memory: 64M
 
-  prometheus:
-    image: prom/prometheus
-    networks:
-      - net
-    ports:
-      - "9090:9090"
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention=${PROMETHEUS_RETENTION:-24h}'
-    volumes:
-      - prometheus:/prometheus
-    configs:
-      - source: prom_conf
-        target: /etc/prometheus/prometheus.yml
-    deploy:
-      mode: replicated
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
-      resources:
-        limits:
-          memory: 2048M
-        reservations:
-          memory: 128M
+#  prometheus:
+#    image: prom/prometheus
+#    networks:
+#      - net
+#    ports:
+#      - "9090:9090"
+#    command:
+#      - '--config.file=/etc/prometheus/prometheus.yml'
+#      - '--storage.tsdb.path=/prometheus'
+#      - '--storage.tsdb.retention=${PROMETHEUS_RETENTION:-24h}'
+#    volumes:
+#      - prometheus:/prometheus
+#    configs:
+#      - source: prom_conf
+#        target: /etc/prometheus/prometheus.yml
+#    deploy:
+#      mode: replicated
+#      replicas: 1
+#      placement:
+#        constraints:
+#          - node.role == manager
+#      resources:
+#        limits:
+#          memory: 2048M
+#        reservations:
+#          memory: 128M

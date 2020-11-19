@@ -1,9 +1,6 @@
 # docker-swarm-monitor
 simple configurations to run docker swarm monitor componentes including prometheus server and pre-configured scraping
 
-## run
-```bash
-$ git clone https://github.com/opvizordz/docker-swarm-monitor.git
 $ cd docker-swarm-monitor
 docker stack deploy -c docker-compose.stack.yml docker-swarm-monitor
 ```
@@ -21,4 +18,3 @@ The following components are part of this project
 * cAdvisor
 * node Exporter
 * dockerd-exporter
-* Prometheus
